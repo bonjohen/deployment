@@ -1,0 +1,32 @@
+[Unit]
+Description={{ description|default('PythonWeb Application') }}
+After=network.target
+{% if server_type == 'nginx' or server_type == 'apache' %}
+Requires={{ server_type }}.service
+After={{ server_type }}.service
+{% endif %}
+
+[Service]
+User={{ user|default('www-data') }}
+Group={{ group|default('www-data') }}
+WorkingDirectory={{ app_dir }}
+Environment="APP_ENV={{ environment|default('production') }}"
+{% if server_type == 'gunicorn' %}
+ExecStart={{ gunicorn_path }} -c {{ config_file }} {{ app_module }}
+{% elif server_type == 'uwsgi' %}
+ExecStart={{ uwsgi_path }} --ini {{ config_file }}
+{% elif server_type == 'nginx' %}
+ExecStart={{ nginx_path }} -c {{ config_file }}
+ExecReload={{ nginx_path }} -s reload
+{% elif server_type == 'apache' %}
+ExecStart={{ apache_path }} -k start
+ExecReload={{ apache_path }} -k graceful
+{% endif %}
+Restart=always
+RestartSec=5
+KillMode=mixed
+TimeoutStopSec=5
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
